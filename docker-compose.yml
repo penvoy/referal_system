@@ -1,0 +1,57 @@
+version: '3.0'
+services:
+  django:
+    build: ./referals/
+    container_name: server
+    restart: always
+    ports:
+      - 8000:8000
+    command: >
+      sh -c "nohup python manage.py runserver 0.0.0.0:8000"
+    networks:
+      - myNetwork
+    env_file:
+      - ./.env
+    depends_on:
+      - postgres
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: postgresdb
+    environment:
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=strong_password
+      - POSTGRES_DB=django_db
+    # Сеть
+    ports:
+      - 5432:5432
+    networks:
+      - myNetwork
+ 
+  redis:
+    image: redis:alpine
+    container_name: redis
+    restart: always
+    ports:
+    # Используемые порты
+      - 6379:6379
+    networks:
+      - myNetwork
+
+  # celery
+  celery:
+    build: ./referals
+    container_name: celery
+    restart: always
+    command: sh -c "celery -A core worker -l INFO"
+    depends_on:
+      - redis
+    networks:
+      - myNetwork
+    env_file:
+    - ./.env
+
+# создаём сеть.
+networks:
+  myNetwork:
+    driver: bridge
